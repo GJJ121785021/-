@@ -1,0 +1,49 @@
+
+查找 find / -name aaa  寻找有aaa的名字的文件
+
+python  快捷键   加 .re  生成return           .if
+
+
+ps -ef|grep nginx
+ps -ef|grep uwsgi
+好像是查看xxx的进程
+
+lsof -i:80 查看谁占用了80端口
+
+
+重命名  mv test.txt wbk.txt
+
+
+安装vim
+apt-get update
+apt-get install vim
+
+
+
+
+
+   、、、、    Docker     、、、、、、、
+
+docker从宿主机复制文件到容器  docker cp containerID:container_path host_path
+
+
+Docker允许通过外部访问容器或者容器之间互联的方式来提供网络服务。
+容器启动之后，容器中可以运行一些网络应用，通过-p或-P参数来指定端口映射。
+注意：
+宿主机的一个端口只能映射到容器内部的某一个端口上，比如：8080->80之后，就不能8080->81
+容器内部的某个端口可以被宿主机的多个端口映射,比如：8080->80，8090->80,8099->80
+1）启动容器时，选择一个端口映射到容器内部开放端口上
+-p   小写p表示docker会选择一个具体的宿主机端口映射到容器内部开放的网络端口上。
+-P   大写P表示docker会随机选择一个宿主机端口映射到容器内部开放的网络端口上。
+
+-p 192.168.10.214:7777:80 -p 127.0.0.1:7788:80
+
+docker访问宿主机https://blog.csdn.net/qq_38403662/article/details/102555888?utm_medium=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-2.nonecase&depth_1-utm_source=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-2.nonecase
+
+1. ip addr  会看到docker0那个ip，可以使用来访问宿主机(172.17.0.1)
+缺点:
+此IP并不一定完全固定，可能会因系统及配置而发生变化。
+容器经由docker0网桥无法访问到监听地址是127.0.0.1的应用。需要将MySQL等配置为监听0.0.0.0。
+2.容器使用host网络
+docker run -d --name nginx --network host nginx      或在compose文件中指定network_mode: “host”
+上面的命令中，没有必要像前面一样使用-p 80:80 -p 443:443来映射端口，是因为本身与宿主机共用了网络，容器中暴露端口等同于宿主机暴露端口。

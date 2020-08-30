@@ -1,0 +1,14 @@
+设置yum源   /etc/yum.repos.d/CentOS-Base.repo
+````````````````
+[kubernetes]
+name=Kubernetes
+baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=0
+`````````````````
+
+安装kubeadm
+yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+
+设置kubeadm开机启动
+systemctl enable kubelet && systemctl start kubelet

@@ -1,0 +1,57 @@
+ 
+settings ->  REST_FRAMEWORK
+
+ 'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'],
+这个的作用是 限制   使用Django的标准Django .contrib身份验证的权限,  或为未经身份验证的用户允许只读访问。
+
+而 ViewSet中的  permission_classes = [permissions.IsAuthenticated]
+是限制 只允许登陆用户访问（读和修改）
+
+urls中的  url('api-auth/', include('rest_framework.urls', namespace='rest_framework'))
+意思是给网页一个登陆模块，不然需要登录查看的内容没有入口登录
+
+
+报错 Could not resolve URL for hyperlinked relationship using view name "snippet-detail". You may have fa.......
+我通过在项目的settings.py中为其余框架api指定NamespaceVersioning来解决此问题
+REST_FRAMEWORK = {
+    'DEFAULT_VERSIONING_CLASS':'rest_framework.versioning.NamespaceVersioning'}
+
+
+
+自关联序列化： ->  natural_key 
+
+
+
+
+一次关于host的经历：
+部署好网站后发现，DRF超链接序列的时候反向解析url得到的host错误，
+刨根问底，最后确定了反向解析得到的url，用到了HttpRequest的get_host()方法，源码见django->http->request.py
+1.与USE_X_FORWARDED_HOST和HTTP_X_FORWARDED_HOST有关（前者在设置中设置布尔值，后者是与代理转发host有关，用来寻找用户真实ip）
+2.与META['HTTP_HOST']有关。官网说明：HTTP_HOST -客户端发送的HTTP Host标头。  值等于request.headers中的Host，（如果没这个值就等于服务自己起的host吧）
+	其中我的配置信息为：
+Nginx在8080端口，Django在8000端口，发现原请求中的Host为8080端口
+这时改变request.headers中的Host去请求8000端口，发现reverse会随请求头Host的变化而变化
+但是！以同样的方式去请求8080端口，发现reverse出的url 的host始终是8000，通过上面括号内的尝试，猜测应该是Nginx在转发请求时改变了请求头的Host信息，给删了？，或者是搞成什么了，才会一直是Django自己起服务的端口，     那么！问题应该就出现在Nginx上，看一看是不是可以配置host
+查找过后，发现在location{  ... } 中，的确可以配置   proxy_set_header Host  $http_host;  (使用$host则为单独的host没有port，$http_host是request的Host)
+其他部分详细配置如下:
+     location ~ ^/list {
+         #如果后端的服务器返回502、504、执行超时等错误，自动将请求转发到upstream负载均衡池中的另一台服务器，实现故障转移。
+         proxy_next_upstream http_502 http_504 error timeout invalid_header;
+         proxy_cache cache_one;
+         #对不同的HTTP状态码设置不同的缓存时间
+         proxy_cache_valid  200 301 302 304 1d;
+         #proxy_cache_valid  any 1d;
+         #以域名、URI、参数组合成Web缓存的Key值，Nginx根据Key值哈希，存储缓存内容到二级缓存目录内
+         proxy_cache_key $host$uri$is_args$args; 
+         proxy_set_header Host  $host;  # 设置请求头的Host
+         proxy_set_header X-Forwarded-For  $remote_addr;   # 这个是于代理地址有关（头信息的key不区分大小写， 他用于获取用户的真实ip，及中间经过的代理服务器）
+         proxy_ignore_headers "Cache-Control" "Expires" "Set-Cookie";   # 应该是忽略（去掉）一些头信息
+         #proxy_ignore_headers Set-Cookie;
+         #proxy_hide_header Set-Cookie;  
+         proxy_pass http://backend_server;   # 转发请求的地址
+         # ！！！！proxy_set_header是Nginx设置请求头信息给上游服务器 ，而add_header是Nginx设置响应头信息给浏览器
+         add_header      Nginx-Cache     "$upstream_cache_status  from  km";
+          expires      1d;   # 译为到期
+        }  
+
+
